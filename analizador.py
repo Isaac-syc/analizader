@@ -16,6 +16,8 @@ tokens = [
     'LLAVE_F',
     'COMA',
     'OPERADOR_RELACIONAL',
+    'CONTENIDO',
+    'DOS_PUNTOS',
 ]
 
 t_ASIGNACION = r'='
@@ -26,6 +28,13 @@ t_LLAVE_F = r'\}'
 t_COMA = r','
 t_OPERADOR_RELACIONAL = r'[<>]=?|!=|=='
 t_PALABRA_RESERVADA = r'FOR|IF|MAIN|FUNC'
+t_DOS_PUNTOS = r':'
+# t_CONTENIDO = r"print\('[^']*'\)(.|\n)*"
+
+def t_CONTENIDO(t):
+    r"print\('[^']*'\)"
+    return t
+
 
 def t_ENTERO(t):
     r'\d+'
@@ -33,7 +42,8 @@ def t_ENTERO(t):
     return t
 
 def t_CADENA(t):
-    r'"[^"]*"'
+    r'"[^"]*"(.|\n)*'
+
     t.value = t.value[1:-1]
     return t
 
@@ -42,10 +52,9 @@ def t_IDENTIFICADOR(t):
     t.type = 'IDENTIFICADOR'
     return t
 
-# def t_CARACTER_NO_RECONOCIDO(t):
-#     r'[^a-z\d\s"=(){}<>,!+-]'
-#     t.value = (t.value[0],)
-#     return t
+def t_newline(t):
+    r'\n+'
+    t.lexer.lineno += len(t.value)
 
 t_ignore = ' \n\t'
 
@@ -71,8 +80,10 @@ def on_analyze():
     tokens_result = analyze_text(input_text)
     print("tokens_result:", tokens_result)
 
-    result = parsear(input_text)
-    print("result de analizador:", result)
+    result, respuesta = parsear(input_text) 
+
+    print("result de analizadorrrrrrrrrrr:", result)
+    print("respuesta de analizador:", respuesta)
     if result == True:
         result_text = "Cadena válida."
     else:
@@ -82,15 +93,25 @@ def on_analyze():
         tree.delete(item)
 
     for i, (token_type, lexeme) in enumerate(tokens_result, start=1):
-        tree.insert("", "end", values=(i, token_type, lexeme))
+        display_lexeme = lexeme
+        if token_type == 'CADENA':
+            last_quote_index = lexeme.rfind('"')
+            display_lexeme = lexeme[0:last_quote_index]
+        else:
+            display_lexeme = lexeme
+        tree.insert("", "end", values=(i, token_type, display_lexeme))
 
     # Muestra el resultado en la interfaz gráfica
     tree.insert("", "end", values=("Resultado", result_text))
+    # Actualizar el widget de respuesta con la nueva respuesta
+    if respuesta:
+        respuesta_label.config(text=respuesta)
+    else:
+        respuesta_label.config(text="Error de ejecución.")
 
 root = tk.Tk()
 root.title("Lexer GUI")
-
-root.geometry("320x400")
+root.geometry("350x500")
 
 text_entry = tk.Text(root, height=3, width=40)
 text_entry.pack(pady=10)
@@ -100,10 +121,12 @@ analyze_button.pack()
 
 columns = ("#", "Tipo de Token", "Lexema")
 tree = ttk.Treeview(root, columns=columns, show="headings")
-
 for col in columns:
     tree.heading(col, text=col)
     tree.column(col, width=100)
-
 tree.pack()
+
+respuesta_label = tk.Label(root, text="", wraplength=300, font=("Helvetica", 13))
+respuesta_label.pack(pady=10)
+
 root.mainloop()
